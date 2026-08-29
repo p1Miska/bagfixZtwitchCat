@@ -3,7 +3,6 @@ package dev.phantomtwitchcats.twitch;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.phantomtwitchcats.PhantomTwitchCatsClient;
-import net.minecraft.Util;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -209,8 +208,16 @@ public final class TwitchAuth {
     }
 
     private static void openBrowser(String url) {
+        // Используем java.awt.Desktop напрямую вместо net.minecraft.Util —
+        // тот класс не резолвится в 26.1.2 по старому импорту, а Desktop
+        // не зависит от маппингов Minecraft вообще и работает надёжно.
         try {
-            Util.getPlatform().openUri(url); // проверить: сигнатура Util.getPlatform()/openUri могла измениться
+            if (java.awt.Desktop.isDesktopSupported()
+                    && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+            } else {
+                PhantomTwitchCatsClient.LOGGER.warn("Desktop.browse недоступен, откройте ссылку вручную: {}", url);
+            }
         } catch (Throwable t) {
             PhantomTwitchCatsClient.LOGGER.warn("Не удалось открыть браузер автоматически: {}", t.toString());
         }

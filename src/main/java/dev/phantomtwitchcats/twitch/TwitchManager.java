@@ -412,7 +412,7 @@ public final class TwitchManager {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player != null) {
-                client.player.displayClientMessage(Component.literal("§b[PhantomCats]§r " + message), false);
+                client.gui.getChat().addMessage(Component.literal("§b[PhantomCats]§r " + message));
             }
         });
     }
