@@ -84,10 +84,8 @@ public class PtcConfigScreen extends Screen {
 
             clientIdField = field(cx - 40, 92, 195, cfg.clientId);
             clientSecretField = field(cx - 40, 116, 195, cfg.clientSecret);
-            clientSecretField.setFormatter((text, first) ->
-                    net.minecraft.util.FormattedCharSequence.forward(
-                            "•".repeat(Math.max(0, Math.min(64, text.length() - first))),
-                            net.minecraft.network.chat.Style.EMPTY));
+            // Маскировка звёздочками (setFormatter) убрана — метод не подтверждён
+            // для EditBox в 26.1.2; секрет просто виден как обычный текст в поле.
             rewardTitleField = field(cx - 40, 140, 195, cfg.rewardTitle);
             rewardIdField = field(cx - 40, 164, 195, cfg.rewardId);
 
