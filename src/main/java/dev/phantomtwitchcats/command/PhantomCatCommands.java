@@ -1,6 +1,8 @@
 package dev.phantomtwitchcats.command;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import dev.phantomtwitchcats.cat.CatManager;
@@ -10,7 +12,6 @@ import dev.phantomtwitchcats.cat.PhantomCat;
 import dev.phantomtwitchcats.config.ConfigManager;
 import dev.phantomtwitchcats.config.PtcConfigScreen;
 import dev.phantomtwitchcats.twitch.TwitchManager;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.Minecraft;
@@ -36,28 +37,28 @@ public final class PhantomCatCommands {
 
     public static void register() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-                ClientCommandManager.literal("phantomcat")
-                        .then(ClientCommandManager.literal("spawn")
-                                .then(ClientCommandManager.argument("user", StringArgumentType.word())
+                LiteralArgumentBuilder.<FabricClientCommandSource>literal("phantomcat")
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("spawn")
+                                .then(RequiredArgumentBuilder.<FabricClientCommandSource, String>argument("user", StringArgumentType.word())
                                         .executes(ctx -> spawn(ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "user"), ""))
-                                        .then(ClientCommandManager.argument("args", StringArgumentType.greedyString())
+                                        .then(RequiredArgumentBuilder.<FabricClientCommandSource, String>argument("args", StringArgumentType.greedyString())
                                                 .suggests(ARG_SUGGESTIONS)
                                                 .executes(ctx -> spawn(ctx.getSource(),
                                                         StringArgumentType.getString(ctx, "user"),
                                                         StringArgumentType.getString(ctx, "args"))))))
-                        .then(ClientCommandManager.literal("remove")
-                                .then(ClientCommandManager.argument("user", StringArgumentType.word())
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("remove")
+                                .then(RequiredArgumentBuilder.<FabricClientCommandSource, String>argument("user", StringArgumentType.word())
                                         .executes(ctx -> remove(ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "user")))))
-                        .then(ClientCommandManager.literal("removeall")
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("removeall")
                                 .executes(ctx -> {
                                     int n = CatManager.get().clearAll();
                                     ctx.getSource().sendFeedback(Component.literal("Удалено фантомных котов: " + n)
                                             .withStyle(ChatFormatting.GREEN));
                                     return n;
                                 }))
-                        .then(ClientCommandManager.literal("list")
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("list")
                                 .executes(ctx -> {
                                     List<PhantomCat> cats = CatManager.get().active();
                                     if (cats.isEmpty()) {
@@ -73,33 +74,33 @@ public final class PhantomCatCommands {
                                     }
                                     return cats.size();
                                 }))
-                        .then(ClientCommandManager.literal("reload")
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("reload")
                                 .executes(ctx -> {
                                     ConfigManager.load();
                                     ctx.getSource().sendFeedback(Component.literal("Конфигурация перезагружена.")
                                             .withStyle(ChatFormatting.GREEN));
                                     return 1;
                                 }))
-                        .then(ClientCommandManager.literal("config")
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("config")
                                 .executes(ctx -> {
                                     Minecraft client = Minecraft.getInstance();
                                     client.execute(() -> client.setScreen(new PtcConfigScreen(null)));
                                     return 1;
                                 }))
-                        .then(ClientCommandManager.literal("twitch")
-                                .then(ClientCommandManager.literal("status")
+                        .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("twitch")
+                                .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("status")
                                         .executes(ctx -> {
                                             ctx.getSource().sendFeedback(Component.literal("Twitch: "
                                                     + TwitchManager.get().status()));
                                             return 1;
                                         }))
-                                .then(ClientCommandManager.literal("connect")
+                                .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("connect")
                                         .executes(ctx -> {
                                             TwitchManager.get().connectNow();
                                             ctx.getSource().sendFeedback(Component.literal("Подключаюсь к Twitch…"));
                                             return 1;
                                         }))
-                                .then(ClientCommandManager.literal("disconnect")
+                                .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("disconnect")
                                         .executes(ctx -> {
                                             TwitchManager.get().disconnect(false);
                                             return 1;
