@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "phantomtwitchcats",
+  "version": "${version}",
+  "name": "Phantom Twitch Cats",
+  "description": "Фантомные коты зрителей Twitch за Channel Points. Полностью клиентский мод: работает на любом сервере без серверной части.",
+  "authors": ["YourName"],
+  "contact": {
+    "homepage": "https://github.com/yourname/phantom-twitch-cats",
+    "sources": "https://github.com/yourname/phantom-twitch-cats"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.phantomtwitchcats.PhantomTwitchCatsClient"],
+    "modmenu": ["dev.phantomtwitchcats.compat.ModMenuCompat"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": ">=26.1",
+    "java": ">=25"
+  },
+  "recommends": {
+    "modmenu": "*"
+  }
+}

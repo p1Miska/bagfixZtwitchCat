@@ -1,0 +1,52 @@
+plugins {
+    // net.fabricmc.fabric-loom — для необфусцированных версий (26.1+), без ремаппинга.
+    // ВАЖНО: версия должна быть полной (с патчем), "1.16" сама по себе не существует
+    // как артефакт — есть только 1.16.1/1.16.2/1.16.3 и т.д. Актуальный список версий:
+    // https://mvnrepository.com/artifact/net.fabricmc.fabric-loom/net.fabricmc.fabric-loom.gradle.plugin
+    id 'net.fabricmc.fabric-loom' version '1.16.3'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'TerraformersMC'
+        url = 'https://maven.terraformersmc.com/releases/'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Для 26.1+ отдельных маппингов не существует: официальный джар Minecraft
+    // уже содержит имена Mojang, и net.fabricmc.fabric-loom его не ремапит.
+    // Строки mappings/yarn_mappings здесь намеренно нет.
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // ModMenu: нужен только для кнопки «Config». Если артефакт для вашей версии
+    // не находится — удалите эту строку, файл compat/ModMenuCompat.java
+    // и entrypoint "modmenu" из fabric.mod.json. Настройки останутся
+    // доступными через /phantomcat config.
+    compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+java {
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = 'UTF-8'
+    it.options.release = 25
+}
