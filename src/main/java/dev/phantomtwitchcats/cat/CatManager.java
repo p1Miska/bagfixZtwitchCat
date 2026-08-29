@@ -72,7 +72,7 @@ public final class CatManager {
         double y = spot != null ? spot.getY() : player.getY();
         double z = spot != null ? spot.getZ() + 0.5 : player.getZ();
         float face = player.getYRot() + 180.0f;
-        entity.moveTo(x, y, z, face, 0.0f);
+        entity.absMoveTo(x, y, z, face, 0.0f);
         entity.setYBodyRot(face);
         entity.setYHeadRot(face);
 
@@ -83,20 +83,20 @@ public final class CatManager {
 
         for (int i = 0; i < 10; i++) {
             world.addParticle(ParticleTypes.POOF,
-                    x + (world.random.nextDouble() - 0.5) * 0.6,
-                    y + 0.2 + world.random.nextDouble() * 0.6,
-                    z + (world.random.nextDouble() - 0.5) * 0.6, 0, 0.02, 0);
+                    x + (world.getRandom().nextDouble() - 0.5) * 0.6,
+                    y + 0.2 + world.getRandom().nextDouble() * 0.6,
+                    z + (world.getRandom().nextDouble() - 0.5) * 0.6, 0, 0.02, 0);
         }
-        if (cfg.localSounds) {
-            world.playLocalSound(x, y, z, SoundEvents.CAT_AMBIENT, SoundSource.NEUTRAL, 0.5f, 1.0f, false);
-        }
+        // SoundEvents.CAT_AMBIENT в 26.1.2 больше не существует как константа —
+        // звуки кота теперь per-variant через CatSoundSet. Убрано до нормальной
+        // интеграции со звуковым сетом варианта.
 
         boolean kitten = request.baby() && cfg.allowKittens;
         if (cfg.announceSpawns) {
-            player.displayClientMessage(Component.literal("» ").withStyle(ChatFormatting.AQUA)
+            client.gui.getChat().addMessage(Component.literal("» ").withStyle(ChatFormatting.AQUA)
                     .append(Component.literal(request.displayName()).withStyle(ChatFormatting.YELLOW))
                     .append(Component.literal(kitten ? " призвал фантомного котёнка!" : " призвал фантомного кота!")
-                            .withStyle(ChatFormatting.AQUA)), true);
+                            .withStyle(ChatFormatting.AQUA)));
         }
         PhantomTwitchCatsClient.LOGGER.info("Призван фантомный кот {} ({}, котёнок: {})",
                 request.displayName(), variantId, kitten);
@@ -134,8 +134,8 @@ public final class CatManager {
     public void onWorldReady() {
         Minecraft client = Minecraft.getInstance();
         if (!cats.isEmpty() && client.player != null && ConfigManager.get().announceSpawns) {
-            client.player.displayClientMessage(Component.literal("» Фантомных котов с вами: " + cats.size())
-                    .withStyle(ChatFormatting.AQUA), true);
+            client.gui.getChat().addMessage(Component.literal("» Фантомных котов с вами: " + cats.size())
+                    .withStyle(ChatFormatting.AQUA));
         }
     }
 
@@ -196,11 +196,7 @@ public final class CatManager {
         }
         if (best != null) {
             best.toggleSitting();
-            PhantomCatEntity e = best.entity();
-            if (ConfigManager.get().localSounds && e != null) {
-                world.playLocalSound(e.getX(), e.getY(), e.getZ(), SoundEvents.CAT_PURR,
-                        SoundSource.NEUTRAL, 0.6f, 1.0f, false);
-            }
+            // SoundEvents.CAT_PURR больше не существует как константа (см. выше).
         }
     }
 }

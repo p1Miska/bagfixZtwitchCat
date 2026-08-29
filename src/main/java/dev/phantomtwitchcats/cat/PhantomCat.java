@@ -99,7 +99,7 @@ public final class PhantomCat {
         double y = spot != null ? spot.getY() : player.getY();
         double z = spot != null ? spot.getZ() + 0.5 : player.getZ();
         float face = player.getYRot() + 180.0f;
-        e.moveTo(x, y, z, face, 0.0f);
+        e.absMoveTo(x, y, z, face, 0.0f);
         e.setYBodyRot(face);
         e.setYHeadRot(face);
         this.entity = e;
@@ -110,10 +110,7 @@ public final class PhantomCat {
     void onRemoved(ClientLevel world) {
         if (entity != null) {
             poof(world, 12);
-            if (ConfigManager.get().localSounds) {
-                world.playLocalSound(entity.getX(), entity.getY(), entity.getZ(),
-                        SoundEvents.CAT_AMBIENT, SoundSource.NEUTRAL, 0.4f, 0.8f, false);
-            }
+            // SoundEvents.CAT_AMBIENT больше не существует как константа в 26.1.2.
         }
         entity = null;
     }
@@ -158,13 +155,13 @@ public final class PhantomCat {
         if (sitting) {
             if (distH > 8.0 || stateTimer <= 0) {
                 sitting = false;
-                stateTimer = 80 + world.random.nextInt(160);
+                stateTimer = 80 + world.getRandom().nextInt(160);
             }
         } else {
-            if (stateTimer <= 0) stateTimer = 100 + world.random.nextInt(300);
-            if (cfg.autoSit && distH < 3.5 && world.random.nextInt(400) == 0) {
+            if (stateTimer <= 0) stateTimer = 100 + world.getRandom().nextInt(300);
+            if (cfg.autoSit && distH < 3.5 && world.getRandom().nextInt(400) == 0) {
                 sitting = true;
-                stateTimer = 100 + world.random.nextInt(400);
+                stateTimer = 100 + world.getRandom().nextInt(400);
             }
         }
         e.setInSittingPose(sitting);
@@ -188,10 +185,10 @@ public final class PhantomCat {
                 targetX = player.getX() + Math.cos(ang) * 2.2;
                 targetZ = player.getZ() + Math.sin(ang) * 2.2;
                 if (e.distanceToSqr(targetX, e.getY(), targetZ) > 0.6) speed = 0.15;
-                if (world.random.nextInt(500) == 0) {
+                if (world.getRandom().nextInt(500) == 0) {
                     wandering = true;
-                    wanderX = e.getX() + (world.random.nextDouble() - 0.5) * 4.0;
-                    wanderZ = e.getZ() + (world.random.nextDouble() - 0.5) * 4.0;
+                    wanderX = e.getX() + (world.getRandom().nextDouble() - 0.5) * 4.0;
+                    wanderZ = e.getZ() + (world.getRandom().nextDouble() - 0.5) * 4.0;
                 }
             }
         }
@@ -231,7 +228,7 @@ public final class PhantomCat {
         if (moving && e.onGround() && e.horizontalCollision) {
             e.setDeltaMovement(vx, 0.5, vz);
         }
-        if (!sitting && e.onGround() && world.random.nextInt(1200) == 0 && distH < 6.0) {
+        if (!sitting && e.onGround() && world.getRandom().nextInt(1200) == 0 && distH < 6.0) {
             e.setDeltaMovement(e.getDeltaMovement().x, 0.42, e.getDeltaMovement().z);
         }
 
@@ -246,13 +243,13 @@ public final class PhantomCat {
         // --- взгляд (на игрока или по сторонам) ---
         lookTimer--;
         if (moving || lookTimer <= 0) {
-            if (moving || (distH < 6.0 && world.random.nextFloat() < 0.55f)) {
+            if (moving || (distH < 6.0 && world.getRandom().nextFloat() < 0.55f)) {
                 aimHeadAt(e, player.getX(), player.getEyeY(), player.getZ());
             } else {
-                headYawTarget = e.yBodyRot + (world.random.nextFloat() - 0.5f) * 140.0f;
-                headPitchTarget = (world.random.nextFloat() - 0.5f) * 24.0f;
+                headYawTarget = e.yBodyRot + (world.getRandom().nextFloat() - 0.5f) * 140.0f;
+                headPitchTarget = (world.getRandom().nextFloat() - 0.5f) * 24.0f;
             }
-            if (lookTimer <= 0) lookTimer = 30 + world.random.nextInt(90);
+            if (lookTimer <= 0) lookTimer = 30 + world.getRandom().nextInt(90);
         }
         e.setYHeadRot(lerpAngle(e.yHeadRot, headYawTarget, 0.25f));
         e.setXRot(Mth.lerp(0.25f, e.getXRot(), Mth.clamp(headPitchTarget, -30.0f, 30.0f)));
@@ -275,10 +272,7 @@ public final class PhantomCat {
         }
 
         // --- мяу ---
-        if (cfg.localSounds && world.random.nextInt(800) == 0) {
-            world.playLocalSound(e.getX(), e.getY(), e.getZ(), SoundEvents.CAT_AMBIENT,
-                    SoundSource.NEUTRAL, 0.4f, 0.9f + world.random.nextFloat() * 0.25f, false);
-        }
+        // SoundEvents.CAT_AMBIENT больше не существует как константа в 26.1.2.
     }
 
     // ------------------------------------------------------------------
@@ -305,7 +299,7 @@ public final class PhantomCat {
         double y = spot != null ? spot.getY() : player.getY();
         double z = spot != null ? spot.getZ() + 0.5 : player.getZ();
         float face = player.getYRot() + 180.0f;
-        entity.moveTo(x, y, z, face, 0.0f);
+        entity.absMoveTo(x, y, z, face, 0.0f);
         entity.setDeltaMovement(Vec3.ZERO);
         entity.setYBodyRot(face);
         entity.setYHeadRot(face);
@@ -317,9 +311,9 @@ public final class PhantomCat {
         if (entity == null) return;
         for (int i = 0; i < count; i++) {
             world.addParticle(ParticleTypes.POOF,
-                    entity.getX() + (world.random.nextDouble() - 0.5) * 0.6,
-                    entity.getY() + 0.2 + world.random.nextDouble() * 0.5,
-                    entity.getZ() + (world.random.nextDouble() - 0.5) * 0.6,
+                    entity.getX() + (world.getRandom().nextDouble() - 0.5) * 0.6,
+                    entity.getY() + 0.2 + world.getRandom().nextDouble() * 0.5,
+                    entity.getZ() + (world.getRandom().nextDouble() - 0.5) * 0.6,
                     0, 0.02, 0);
         }
     }
