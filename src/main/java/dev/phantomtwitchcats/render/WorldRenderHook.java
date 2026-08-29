@@ -1,48 +1,56 @@
 package dev.phantomtwitchcats.render;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.phantomtwitchcats.cat.CatManager;
 import dev.phantomtwitchcats.cat.PhantomCat;
 import dev.phantomtwitchcats.entity.PhantomCatEntity;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.PoseStack;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
 /**
  * Ручной рендер фантомных котов после обычных сущностей.
- * Коты не добавляются в мир, поэтому их нужно рисовать самим —
- * ванильным рендерером котов (модель, анимации, ошейник, метка с именем).
+ * Коты не добавляются в мир, поэтому их нужно рисовать самим.
+ *
+ * ВНИМАНИЕ: WorldRenderEvents -> LevelRenderEvents, WorldRenderContext ->
+ * LevelRenderContext, matrixStack() -> poseStack() — подтверждено официальной
+ * документацией Fabric (docs.fabricmc.net/develop/rendering/world, июль 2026).
+ * Позиция камеры теперь берётся через ctx.levelState().cameraRenderState.pos
+ * вместо ctx.camera().getPosition() — тоже подтверждено тем же источником.
+ * Метод ctx.consumers() НЕ подтверждён явно (не был в примере) — если сборка
+ * упадёт именно на нём, это первое, что нужно проверить/заменить.
+ * LevelRenderer.getLightColor(...) заменён на статичный full-bright свет
+ * (15728880) — не подтверждена реальная замена статического метода освещения,
+ * так что коты будут всегда ярко освещены вместо честного локального света.
  */
 public final class WorldRenderHook {
+
+    private static final int FULL_BRIGHT_LIGHT = 15728880;
 
     private WorldRenderHook() {
     }
 
     public static void register() {
-        WorldRenderEvents.AFTER_ENTITIES.register(ctx -> {
+        LevelRenderEvents.AFTER_ENTITIES.register(ctx -> {
             Minecraft client = Minecraft.getInstance();
             ClientLevel world = client.level;
             if (world == null) {
                 return;
             }
 
-            PoseStack matrices = ctx.matrixStack();
+            PoseStack matrices = ctx.poseStack();
             MultiBufferSource consumers = ctx.consumers();
-            Camera camera = ctx.camera();
-            if (matrices == null || consumers == null || camera == null) {
+            if (matrices == null || consumers == null) {
                 return;
             }
 
             float tickDelta = ctx.tickDelta();
-            Vec3 camPos = camera.getPosition();
+            Vec3 camPos = ctx.levelState().cameraRenderState.pos;
             EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
 
             List<PhantomCat> cats = CatManager.get().active();
@@ -60,9 +68,8 @@ public final class WorldRenderHook {
                     continue;
                 }
 
-                float yaw = Mth.rotLerp(tickDelta, e.yRotO, e.getYRot());
-                int light = LevelRenderer.getLightColor(world, e.blockPosition());
-                dispatcher.render(e, dx, dy, dz, yaw, tickDelta, matrices, consumers, light);
+                float yaw = net.minecraft.util.Mth.rotLerp(tickDelta, e.yRotO, e.getYRot());
+                dispatcher.render(e, dx, dy, dz, yaw, tickDelta, matrices, consumers, FULL_BRIGHT_LIGHT);
             }
         });
     }
