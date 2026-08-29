@@ -24,8 +24,8 @@ public final class SafeSpotFinder {
     /** @return позиция «ног» или null, если ничего безопасного не нашли */
     public static BlockPos find(ClientLevel world, BlockPos center, int minRadius, int maxRadius) {
         for (int attempt = 0; attempt < 32; attempt++) {
-            double angle = world.random.nextDouble() * Math.PI * 2;
-            int r = minRadius + (maxRadius > minRadius ? world.random.nextInt(maxRadius - minRadius + 1) : 0);
+            double angle = world.getRandom().nextDouble() * Math.PI * 2;
+            int r = minRadius + (maxRadius > minRadius ? world.getRandom().nextInt(maxRadius - minRadius + 1) : 0);
             int x = center.getX() + (int) Math.round(Math.cos(angle) * r);
             int z = center.getZ() + (int) Math.round(Math.sin(angle) * r);
             for (int dy = 3; dy >= -4; dy--) {
