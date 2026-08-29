@@ -70,6 +70,7 @@ public final class CatFactory {
         List<Holder.Reference<CatVariant>> all = reg.listElements().toList();
         if (all.isEmpty()) return "minecraft:tabby";
         Holder.Reference<CatVariant> pick = all.get(world.getRandom().nextInt(all.size()));
-        return pick.key().location().toString();
+        // .location() переименован в .identifier() вслед за ResourceLocation -> Identifier
+        return pick.key().identifier().toString();
     }
 }

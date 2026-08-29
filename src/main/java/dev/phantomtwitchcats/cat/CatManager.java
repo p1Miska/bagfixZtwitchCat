@@ -72,7 +72,9 @@ public final class CatManager {
         double y = spot != null ? spot.getY() : player.getY();
         double z = spot != null ? spot.getZ() + 0.5 : player.getZ();
         float face = player.getYRot() + 180.0f;
-        entity.absMoveTo(x, y, z, face, 0.0f);
+        entity.setPos(x, y, z);
+        entity.setYRot(face);
+        entity.setXRot(0.0f);
         entity.setYBodyRot(face);
         entity.setYHeadRot(face);
 
@@ -96,7 +98,7 @@ public final class CatManager {
             client.gui.getChat().addMessage(Component.literal("» ").withStyle(ChatFormatting.AQUA)
                     .append(Component.literal(request.displayName()).withStyle(ChatFormatting.YELLOW))
                     .append(Component.literal(kitten ? " призвал фантомного котёнка!" : " призвал фантомного кота!")
-                            .withStyle(ChatFormatting.AQUA)));
+                            .withStyle(ChatFormatting.AQUA)), null, null, null);
         }
         PhantomTwitchCatsClient.LOGGER.info("Призван фантомный кот {} ({}, котёнок: {})",
                 request.displayName(), variantId, kitten);
@@ -135,7 +137,7 @@ public final class CatManager {
         Minecraft client = Minecraft.getInstance();
         if (!cats.isEmpty() && client.player != null && ConfigManager.get().announceSpawns) {
             client.gui.getChat().addMessage(Component.literal("» Фантомных котов с вами: " + cats.size())
-                    .withStyle(ChatFormatting.AQUA));
+                    .withStyle(ChatFormatting.AQUA), null, null, null);
         }
     }
 

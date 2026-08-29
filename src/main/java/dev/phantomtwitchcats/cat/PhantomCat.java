@@ -99,7 +99,9 @@ public final class PhantomCat {
         double y = spot != null ? spot.getY() : player.getY();
         double z = spot != null ? spot.getZ() + 0.5 : player.getZ();
         float face = player.getYRot() + 180.0f;
-        e.absMoveTo(x, y, z, face, 0.0f);
+        e.setPos(x, y, z);
+        e.setYRot(face);
+        e.setXRot(0.0f);
         e.setYBodyRot(face);
         e.setYHeadRot(face);
         this.entity = e;
@@ -299,7 +301,9 @@ public final class PhantomCat {
         double y = spot != null ? spot.getY() : player.getY();
         double z = spot != null ? spot.getZ() + 0.5 : player.getZ();
         float face = player.getYRot() + 180.0f;
-        entity.absMoveTo(x, y, z, face, 0.0f);
+        entity.setPos(x, y, z);
+        entity.setYRot(face);
+        entity.setXRot(0.0f);
         entity.setDeltaMovement(Vec3.ZERO);
         entity.setYBodyRot(face);
         entity.setYHeadRot(face);
