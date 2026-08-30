@@ -14,29 +14,25 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 
 /**
- * Ручной рендер фантомных котов после обычных сущностей.
- * Коты не добавляются в мир, поэтому их нужно рисовать самим.
+ * Ручной рендер фантомных котов. Подтверждённая двухфазная схема (по реальному
+ * примеру из Fabric API): END_EXTRACTION — собрать данные из мира/сущностей,
+ * дальше отдельное событие отрисовки с LevelRenderContext (poseStack(),
+ * levelState().cameraRenderState.pos — тоже подтверждено).
  *
- * ВНИМАНИЕ: WorldRenderEvents -> LevelRenderEvents, WorldRenderContext ->
- * LevelRenderContext, matrixStack() -> poseStack() — подтверждено официальной
- * документацией Fabric (docs.fabricmc.net/develop/rendering/world, июль 2026).
- * Позиция камеры теперь берётся через ctx.levelState().cameraRenderState.pos
- * вместо ctx.camera().getPosition() — тоже подтверждено тем же источником.
- * Метод ctx.consumers() НЕ подтверждён явно (не был в примере) — если сборка
- * упадёт именно на нём, это первое, что нужно проверить/заменить.
- * LevelRenderer.getLightColor(...) заменён на статичный full-bright свет
- * (15728880) — не подтверждена реальная замена статического метода освещения,
- * так что коты будут всегда ярко освещены вместо честного локального света.
+ * ЕДИНСТВЕННОЕ, что здесь всё ещё не подтверждено реальным исходником —
+ * точная сигнатура EntityRenderDispatcher.render(...) в 26.1.2 (старая
+ * 9-аргументная версия не существует). Ниже — best-effort вызов через
+ * тот же общий паттерн extract->render, что и у CatRenderer/Gui
+ * (extractRenderState -> render); если сборка упадёт именно на этих двух
+ * строках — нужны реальные сигнатуры класса EntityRenderDispatcher.
  */
 public final class WorldRenderHook {
-
-    private static final int FULL_BRIGHT_LIGHT = 15728880;
 
     private WorldRenderHook() {
     }
 
     public static void register() {
-        LevelRenderEvents.AFTER_ENTITIES.register(ctx -> {
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ctx -> {
             Minecraft client = Minecraft.getInstance();
             ClientLevel world = client.level;
             if (world == null) {
@@ -69,7 +65,7 @@ public final class WorldRenderHook {
                 }
 
                 float yaw = net.minecraft.util.Mth.rotLerp(tickDelta, e.yRotO, e.getYRot());
-                dispatcher.render(e, dx, dy, dz, yaw, tickDelta, matrices, consumers, FULL_BRIGHT_LIGHT);
+                dispatcher.render(e, dx, dy, dz, yaw, tickDelta, matrices, consumers, 15728880);
             }
         });
     }
