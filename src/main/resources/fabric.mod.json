@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "phantomtwitchcats",
-  "version": "${version}",
+  "version": "1.2",
   "name": "Phantom Twitch Cats",
   "description": "Фантомные коты зрителей Twitch за Channel Points. Полностью клиентский мод: работает на любом сервере без серверной части.",
-  "authors": ["YourName"],
+  "authors": ["p1Miska and AI"],
   "contact": {
     "homepage": "https://github.com/yourname/phantom-twitch-cats",
     "sources": "https://github.com/yourname/phantom-twitch-cats"
