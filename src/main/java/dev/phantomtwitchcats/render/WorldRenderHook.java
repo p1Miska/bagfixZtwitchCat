@@ -6,25 +6,28 @@ import dev.phantomtwitchcats.cat.PhantomCat;
 import dev.phantomtwitchcats.entity.PhantomCatEntity;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
 /**
- * Ручной рендер фантомных котов. Подтверждённая двухфазная схема (по реальному
- * примеру из Fabric API): END_EXTRACTION — собрать данные из мира/сущностей,
- * дальше отдельное событие отрисовки с LevelRenderContext (poseStack(),
- * levelState().cameraRenderState.pos — тоже подтверждено).
+ * Ручной рендер фантомных котов. Сигнатуры подтверждены реальным исходником
+ * (LevelRenderContext.java из fabric-api, EntityRenderDispatcher из mcsrc.dev
+ * для 26.2 — архитектура рендера сущностей в 26.x двухфазная:
+ *   1) extractEntity(entity, partialTicks)  -> EntityRenderState (снимок данных)
+ *   2) submit(state, cameraRenderState, dx, dy, dz, poseStack, submitNodeCollector)
+ *      -> кладёт геометрию в очередь на отрисовку (SubmitNodeCollector),
+ *         больше НЕТ прямого render() с MultiBufferSource/light для сущностей.
  *
- * ЕДИНСТВЕННОЕ, что здесь всё ещё не подтверждено реальным исходником —
- * точная сигнатура EntityRenderDispatcher.render(...) в 26.1.2 (старая
- * 9-аргументная версия не существует). Ниже — best-effort вызов через
- * тот же общий паттерн extract->render, что и у CatRenderer/Gui
- * (extractRenderState -> render); если сборка упадёт именно на этих двух
- * строках — нужны реальные сигнатуры класса EntityRenderDispatcher.
+ * Единственное упрощение: partialTicks захардкожен в 1.0f, так как в
+ * LevelRenderContext нет метода tickDelta()/deltaTracker() — реальный
+ * publicly-доступный источник partial tick не подтверждён. Из-за этого
+ * движение котов может выглядеть чуть менее плавным (без интерполяции
+ * между тиками), но это чисто косметическая мелочь.
  */
 public final class WorldRenderHook {
 
@@ -40,12 +43,12 @@ public final class WorldRenderHook {
             }
 
             PoseStack matrices = ctx.poseStack();
-            MultiBufferSource consumers = ctx.consumers();
-            if (matrices == null || consumers == null) {
+            SubmitNodeCollector collector = ctx.submitNodeCollector();
+            if (matrices == null || collector == null) {
                 return;
             }
 
-            float tickDelta = ctx.tickDelta();
+            float tickDelta = 1.0f; // см. комментарий класса — нет подтверждённого источника partial tick
             Vec3 camPos = ctx.levelState().cameraRenderState.pos;
             EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
 
@@ -64,8 +67,8 @@ public final class WorldRenderHook {
                     continue;
                 }
 
-                float yaw = net.minecraft.util.Mth.rotLerp(tickDelta, e.yRotO, e.getYRot());
-                dispatcher.render(e, dx, dy, dz, yaw, tickDelta, matrices, consumers, 15728880);
+                EntityRenderState state = dispatcher.extractEntity(e, tickDelta);
+                dispatcher.submit(state, ctx.levelState().cameraRenderState, dx, dy, dz, matrices, collector);
             }
         });
     }
