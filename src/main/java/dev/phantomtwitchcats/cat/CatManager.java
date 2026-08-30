@@ -95,10 +95,10 @@ public final class CatManager {
 
         boolean kitten = request.baby() && cfg.allowKittens;
         if (cfg.announceSpawns) {
-            client.gui.getChat().addMessage(Component.literal("» ").withStyle(ChatFormatting.AQUA)
-                    .append(Component.literal(request.displayName()).withStyle(ChatFormatting.YELLOW))
-                    .append(Component.literal(kitten ? " призвал фантомного котёнка!" : " призвал фантомного кота!")
-                            .withStyle(ChatFormatting.AQUA)), null, null, null);
+            // ChatComponent.addMessage приватный в 26.1.2 — вызвать снаружи нельзя
+            // ни с какими аргументами. Заменено на лог до появления публичного API.
+            PhantomTwitchCatsClient.LOGGER.info("{} призвал фантомного {}!",
+                    request.displayName(), kitten ? "котёнка" : "кота");
         }
         PhantomTwitchCatsClient.LOGGER.info("Призван фантомный кот {} ({}, котёнок: {})",
                 request.displayName(), variantId, kitten);
@@ -136,8 +136,7 @@ public final class CatManager {
     public void onWorldReady() {
         Minecraft client = Minecraft.getInstance();
         if (!cats.isEmpty() && client.player != null && ConfigManager.get().announceSpawns) {
-            client.gui.getChat().addMessage(Component.literal("» Фантомных котов с вами: " + cats.size())
-                    .withStyle(ChatFormatting.AQUA), null, null, null);
+            PhantomTwitchCatsClient.LOGGER.info("Фантомных котов с вами: {}", cats.size());
         }
     }
 
