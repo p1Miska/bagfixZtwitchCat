@@ -31,6 +31,8 @@ import java.util.List;
  */
 public final class WorldRenderHook {
 
+    private static boolean loggedOnce = false;
+
     private WorldRenderHook() {
     }
 
@@ -45,17 +47,31 @@ public final class WorldRenderHook {
             PoseStack matrices = ctx.poseStack();
             SubmitNodeCollector collector = ctx.submitNodeCollector();
             if (matrices == null || collector == null) {
+                if (!loggedOnce) {
+                    dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.warn(
+                            "[DEBUG] matrices или collector == null! matrices={}, collector={}", matrices, collector);
+                    loggedOnce = true;
+                }
                 return;
             }
 
-            float tickDelta = 1.0f; // см. комментарий класса — нет подтверждённого источника partial tick
+            float tickDelta = 1.0f;
             Vec3 camPos = ctx.levelState().cameraRenderState.pos;
             EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
 
             List<PhantomCat> cats = CatManager.get().active();
+            if (!loggedOnce) {
+                dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
+                        "[DEBUG] render hook сработал. Активных котов: {}, camPos={}", cats.size(), camPos);
+                loggedOnce = true;
+            }
+
             for (PhantomCat cat : cats) {
                 PhantomCatEntity e = cat.entity();
                 if (e == null || e.level() != world) {
+                    dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
+                            "[DEBUG] кот пропущен: entity={}, e.level()={}, world={}",
+                            e, e == null ? "null" : e.level(), world);
                     continue;
                 }
 
@@ -64,8 +80,14 @@ public final class WorldRenderHook {
                 double dy = pos.y - camPos.y;
                 double dz = pos.z - camPos.z;
                 if (dx * dx + dy * dy + dz * dz > 90.0 * 90.0) {
+                    dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
+                            "[DEBUG] кот отсечён по дистанции: pos={}, camPos={}, dist2={}",
+                            pos, camPos, dx * dx + dy * dy + dz * dz);
                     continue;
                 }
+
+                dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
+                        "[DEBUG] отправляю кота на отрисовку: pos={}, dx={}, dy={}, dz={}", pos, dx, dy, dz);
 
                 EntityRenderState state = dispatcher.extractEntity(e, tickDelta);
                 dispatcher.submit(state, ctx.levelState().cameraRenderState, dx, dy, dz, matrices, collector);
