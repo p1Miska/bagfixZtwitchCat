@@ -409,11 +409,8 @@ public final class TwitchManager {
     }
 
     private static void chat(String message) {
-        Minecraft client = Minecraft.getInstance();
-        client.execute(() -> {
-            if (client.player != null) {
-                client.gui.getChat().addMessage(Component.literal("§b[PhantomCats]§r " + message), null, null, null);
-            }
-        });
+        // ChatComponent.addMessage приватный в 26.1.2 — вызвать снаружи нельзя.
+        // Заменено на лог до появления публичного API для локальных сообщений.
+        PhantomTwitchCatsClient.LOGGER.info("[PhantomCats] {}", message);
     }
 }
