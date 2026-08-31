@@ -69,23 +69,38 @@ public final class TwitchManager {
     // ------------------------------------------------------------- API
 
     public void autoConnect() {
-        if (store.hasTokens() && !manualDisconnect) {
+        if (hasConfiguredTokens() && !manualDisconnect) {
             connectNow();
+        }
+    }
+
+    /** true, если в настройках вставлены Client ID + Access Token (+ Refresh Token). */
+    private boolean hasConfiguredTokens() {
+        PtcConfig cfg = ConfigManager.get();
+        return !cfg.clientId.isBlank() && !cfg.accessToken.isBlank();
+    }
+
+    /**
+     * Забирает Access Token/Refresh Token из настроек в AuthStore, если там
+     * появились новые значения (пользователь вставил их в конфиг-экране).
+     * Вызывается перед подключением.
+     */
+    private void syncTokensFromConfig() {
+        PtcConfig cfg = ConfigManager.get();
+        if (!cfg.accessToken.isBlank() && !cfg.accessToken.equals(store.accessToken())) {
+            store.storeRaw(cfg.accessToken, cfg.refreshToken);
         }
     }
 
     public void connectNow() {
         PtcConfig cfg = ConfigManager.get();
-        if (cfg.clientId.isBlank()) {
+        if (cfg.clientId.isBlank() || cfg.accessToken.isBlank()) {
             state = State.NEEDS_SETUP;
-            detail = "не указан Client ID";
+            detail = "вставьте Client ID и Access Token в настройках (см. twitchtokengenerator.com)";
             return;
         }
         manualDisconnect = false;
-        if (!store.hasTokens()) {
-            startAuthorization();
-            return;
-        }
+        syncTokensFromConfig();
         io.execute(() -> {
             if (!connectPending.compareAndSet(false, true)) {
                 return;
@@ -93,41 +108,22 @@ public final class TwitchManager {
             try {
                 state = State.CONNECTING;
                 detail = "";
+                // Первое подключение: узнаём id/login пользователя по токену.
+                if (store.userId().isBlank()) {
+                    try {
+                        Helix.UserInfo user = Helix.getUser(store.accessToken(), cfg.clientId);
+                        store.updateUserInfo(user.id(), user.login(), user.displayName());
+                    } catch (Exception e) {
+                        state = State.OFFLINE;
+                        detail = "не удалось проверить токен: " + (e.getMessage() != null ? e.getMessage() : e.toString());
+                        return;
+                    }
+                }
                 socket().connect();
             } finally {
                 connectPending.set(false);
             }
         });
-    }
-
-    public void startAuthorization() {
-        PtcConfig cfg = ConfigManager.get();
-        if (cfg.clientId.isBlank() || cfg.clientSecret.isBlank()) {
-            state = State.NEEDS_SETUP;
-            detail = "укажите Client ID и Client Secret в настройках";
-            chat("Для авторизации Twitch укажите Client ID и Client Secret в настройках мода.");
-            return;
-        }
-        manualDisconnect = false;
-        state = State.AUTHORIZING;
-        detail = "ожидание входа через браузер";
-        chat("Открываю браузер для авторизации Twitch… Если он не открылся — ссылка в логе (latest.log).");
-        TwitchAuth.authorizeAsync(cfg.clientId, cfg.clientSecret, cfg.authPort,
-                url -> PhantomTwitchCatsClient.LOGGER.info("Twitch OAuth URL: {}", url),
-                new TwitchAuth.Callback() {
-                    @Override
-                    public void onSuccess() {
-                        chat("Twitch авторизован! Подключаюсь…");
-                        connectNow();
-                    }
-
-                    @Override
-                    public void onError(String message) {
-                        state = State.OFFLINE;
-                        detail = message;
-                        chat("Ошибка авторизации Twitch: " + message);
-                    }
-                });
     }
 
     public void disconnect(boolean manual) {
@@ -147,19 +143,27 @@ public final class TwitchManager {
     public void logout() {
         disconnect(true);
         store.clear();
+        PtcConfig cfg = ConfigManager.get();
+        cfg.accessToken = "";
+        cfg.refreshToken = "";
+        ConfigManager.save();
         detail = "токены удалены";
-        chat("Токены Twitch удалены.");
     }
 
     public void loadRewards(java.util.function.Consumer<List<Helix.RewardInfo>> onSuccess,
                             java.util.function.Consumer<String> onError) {
         PtcConfig cfg = ConfigManager.get();
-        if (cfg.clientId.isBlank() || !store.hasTokens()) {
-            onError.accept("сначала авторизуйте Twitch и укажите Client ID");
+        if (cfg.clientId.isBlank() || cfg.accessToken.isBlank()) {
+            onError.accept("сначала вставьте Client ID и Access Token в настройках");
             return;
         }
+        syncTokensFromConfig();
         io.execute(() -> {
             try {
+                if (store.userId().isBlank()) {
+                    Helix.UserInfo user = Helix.getUser(store.accessToken(), cfg.clientId);
+                    store.updateUserInfo(user.id(), user.login(), user.displayName());
+                }
                 List<Helix.RewardInfo> rewards = authed(token ->
                         Helix.getCustomRewards(token, cfg.clientId, store.userId()));
                 Minecraft.getInstance().execute(() -> onSuccess.accept(rewards));
@@ -381,28 +385,29 @@ public final class TwitchManager {
             throw new IllegalStateException("нет сохранённых токенов Twitch");
         }
         if (store.isExpired()) {
-            refreshToken(ConfigManager.get().clientId, ConfigManager.get().clientSecret);
+            doRefresh();
         }
         return store.accessToken();
     }
 
-    private void refreshToken(String clientId, String clientSecret) throws Exception {
+    private void doRefresh() throws Exception {
         synchronized (store) {
             if (!store.isExpired()) {
                 return; // другой поток уже обновил
             }
             try {
-                JsonObject resp = TwitchAuth.refreshTokens(clientId, clientSecret, store.refreshToken());
-                store.store(resp.get("access_token").getAsString(),
-                        resp.get("refresh_token").getAsString(),
-                        resp.has("expires_in") ? resp.get("expires_in").getAsLong() : 14_400L,
-                        store.userId(), store.userLogin(), store.userName());
-                PhantomTwitchCatsClient.LOGGER.info("Twitch-токен обновлён");
+                TwitchAuth.RefreshResult r = TwitchAuth.refreshViaTokenGenerator(store.refreshToken());
+                store.storeRaw(r.accessToken(), r.refreshToken());
+                // Синхронизируем обратно в конфиг, чтобы после перезапуска токен не потерялся.
+                PtcConfig cfg = ConfigManager.get();
+                cfg.accessToken = r.accessToken();
+                cfg.refreshToken = r.refreshToken();
+                ConfigManager.save();
+                PhantomTwitchCatsClient.LOGGER.info("Twitch-токен обновлён через twitchtokengenerator.com");
             } catch (Exception e) {
-                store.clear();
                 state = State.OFFLINE;
-                detail = "токен устарел — нужна повторная авторизация";
-                chat("Не удалось обновить Twitch-токен. Выполните: /phantomcat twitch connect");
+                detail = "токен устарел, обновление не удалось — вставьте новый токен в настройках";
+                chat("Не удалось обновить Twitch-токен: " + e.getMessage());
                 throw e;
             }
         }

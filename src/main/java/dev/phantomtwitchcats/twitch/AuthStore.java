@@ -57,6 +57,26 @@ public final class AuthStore {
         save();
     }
 
+    /**
+     * Сохраняет токены, вставленные пользователем вручную (с сайта
+     * twitchtokengenerator.com), без известного точного времени истечения.
+     * Ставим короткий срок (1 час) — если он окажется неверным, реальный
+     * 401 от Twitch API всё равно вызовет forceExpire() и повторный рефреш.
+     */
+    public synchronized void storeRaw(String accessToken, String refreshToken) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.expiresAtMs = System.currentTimeMillis() + 3600L * 1000L;
+        save();
+    }
+
+    public synchronized void updateUserInfo(String userId, String userLogin, String userName) {
+        this.userId = userId;
+        this.userLogin = userLogin;
+        this.userName = userName;
+        save();
+    }
+
     public synchronized void clear() {
         accessToken = null;
         refreshToken = null;
