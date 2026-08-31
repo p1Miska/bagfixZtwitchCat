@@ -36,8 +36,16 @@ public final class WorldRenderHook {
     private WorldRenderHook() {
     }
 
+    /**
+     * ВАЖНО: submit() в SubmitNodeCollector нужно вызывать в фазе ИЗВЛЕЧЕНИЯ
+     * (END_EXTRACTION), а не в фазе отрисовки (AFTER_TRANSLUCENT_TERRAIN).
+     * Предыдущая версия молча ничего не рисовала — без исключений, но и без
+     * эффекта — судя по всему, ровно из-за неправильной фазы: submitNodeCollector
+     * технически доступен и там, и там, но реально обрабатывается движком
+     * только то, что просабмичено во время экстракции.
+     */
     public static void register() {
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ctx -> {
+        LevelRenderEvents.END_EXTRACTION.register(ctx -> {
             Minecraft client = Minecraft.getInstance();
             ClientLevel world = client.level;
             if (world == null) {
@@ -62,16 +70,13 @@ public final class WorldRenderHook {
             List<PhantomCat> cats = CatManager.get().active();
             if (!loggedOnce) {
                 dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
-                        "[DEBUG] render hook сработал. Активных котов: {}, camPos={}", cats.size(), camPos);
+                        "[DEBUG] END_EXTRACTION сработал. Активных котов: {}, camPos={}", cats.size(), camPos);
                 loggedOnce = true;
             }
 
             for (PhantomCat cat : cats) {
                 PhantomCatEntity e = cat.entity();
                 if (e == null || e.level() != world) {
-                    dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
-                            "[DEBUG] кот пропущен: entity={}, e.level()={}, world={}",
-                            e, e == null ? "null" : e.level(), world);
                     continue;
                 }
 
@@ -80,14 +85,8 @@ public final class WorldRenderHook {
                 double dy = pos.y - camPos.y;
                 double dz = pos.z - camPos.z;
                 if (dx * dx + dy * dy + dz * dz > 90.0 * 90.0) {
-                    dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
-                            "[DEBUG] кот отсечён по дистанции: pos={}, camPos={}, dist2={}",
-                            pos, camPos, dx * dx + dy * dy + dz * dz);
                     continue;
                 }
-
-                dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
-                        "[DEBUG] отправляю кота на отрисовку: pos={}, dx={}, dy={}, dz={}", pos, dx, dy, dz);
 
                 EntityRenderState state = dispatcher.extractEntity(e, tickDelta);
                 dispatcher.submit(state, ctx.levelState().cameraRenderState, dx, dy, dz, matrices, collector);
