@@ -6,6 +6,7 @@ import dev.phantomtwitchcats.config.ConfigManager;
 import dev.phantomtwitchcats.entity.PhantomCatEntity;
 import dev.phantomtwitchcats.entity.PhantomCatRenderer;
 import dev.phantomtwitchcats.render.StatusHud;
+import dev.phantomtwitchcats.render.CatPauseOverlay;
 import dev.phantomtwitchcats.render.WorldRenderHook;
 import dev.phantomtwitchcats.twitch.RedemptionDeduper;
 import dev.phantomtwitchcats.twitch.TwitchManager;
@@ -55,6 +56,7 @@ public final class PhantomTwitchCatsClient implements ClientModInitializer {
 
         WorldRenderHook.register();
         StatusHud.register();
+        CatPauseOverlay.register();
         PhantomCatCommands.register();
 
         TwitchManager.get().autoConnect();
