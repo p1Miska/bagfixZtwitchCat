@@ -23,13 +23,13 @@ public class PtcConfigScreen extends Screen {
     private int tab;
 
     private EditBox clientIdField;
-    private EditBox clientSecretField;
+    private EditBox accessTokenField;
+    private EditBox refreshTokenField;
     private EditBox rewardTitleField;
     private EditBox rewardIdField;
     private EditBox lifetimeField;
     private EditBox maxCatsField;
     private EditBox maxDistanceField;
-    private EditBox authPortField;
 
     private String message = "";
     private int messageColor = 0xFFFFFF;
@@ -46,13 +46,13 @@ public class PtcConfigScreen extends Screen {
         int cx = this.width / 2;
 
         clientIdField = null;
-        clientSecretField = null;
+        accessTokenField = null;
+        refreshTokenField = null;
         rewardTitleField = null;
         rewardIdField = null;
         lifetimeField = null;
         maxCatsField = null;
         maxDistanceField = null;
-        authPortField = null;
 
         for (int i = 0; i < TABS.length; i++) {
             final int idx = i;
@@ -61,35 +61,37 @@ public class PtcConfigScreen extends Screen {
         }
 
         if (tab == 0) {
-            addRenderableWidget(Button.builder(Component.literal("Авторизовать Twitch"), b -> {
-                applyFields();
-                PtcConfig c = ConfigManager.get();
-                if (c.clientId.isBlank() || c.clientSecret.isBlank()) {
-                    flash("Сначала укажите Client ID и Client Secret", 0xFF5555);
-                } else {
-                    flash("Открываю браузер для авторизации…", 0xFFFFFF);
-                    TwitchManager.get().startAuthorization();
-                }
-            }).bounds(cx - 158, 44, 155, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("Открыть сайт для получения токена"), b -> {
+                dev.phantomtwitchcats.twitch.TwitchAuth.openBrowser("https://twitchtokengenerator.com/");
+                flash("Сайт открыт в браузере — авторизуйтесь и скопируйте 3 значения ниже", 0xFFFFFF);
+            }).bounds(cx - 158, 44, 316, 20).build());
 
-            addRenderableWidget(Button.builder(Component.literal("Отключить Twitch"), b -> {
+            addRenderableWidget(Button.builder(Component.literal("Подключиться"), b -> {
+                applyFields();
+                TwitchManager.get().connectNow();
+                flash("Подключаюсь…", 0xFFFFFF);
+            }).bounds(cx - 158, 68, 155, 20).build());
+
+            addRenderableWidget(Button.builder(Component.literal("Отключить"), b -> {
                 TwitchManager.get().disconnect(true);
                 flash("Twitch отключён", 0xFFFFFF);
-            }).bounds(cx + 3, 44, 155, 20).build());
+            }).bounds(cx + 3, 68, 155, 20).build());
 
-            addRenderableWidget(Button.builder(Component.literal("Выйти из Twitch (удалить токены)"), b -> {
+            addRenderableWidget(Button.builder(Component.literal("Очистить токены"), b -> {
                 TwitchManager.get().logout();
+                clientIdField.setValue("");
+                accessTokenField.setValue("");
+                refreshTokenField.setValue("");
                 flash("Токены Twitch удалены", 0xFFFFFF);
-            }).bounds(cx - 110, 68, 220, 20).build());
+            }).bounds(cx - 110, 92, 220, 20).build());
 
-            clientIdField = field(cx - 40, 92, 195, cfg.clientId);
-            clientSecretField = field(cx - 40, 116, 195, cfg.clientSecret);
-            // Маскировка звёздочками (setFormatter) убрана — метод не подтверждён
-            // для EditBox в 26.1.2; секрет просто виден как обычный текст в поле.
-            rewardTitleField = field(cx - 40, 140, 195, cfg.rewardTitle);
-            rewardIdField = field(cx - 40, 164, 195, cfg.rewardId);
+            clientIdField = field(cx - 20, 116, 195, cfg.clientId);
+            accessTokenField = field(cx - 20, 140, 195, cfg.accessToken);
+            refreshTokenField = field(cx - 20, 164, 195, cfg.refreshToken);
+            rewardTitleField = field(cx - 20, 194, 195, cfg.rewardTitle);
+            rewardIdField = field(cx - 20, 218, 195, cfg.rewardId);
 
-            addRenderableWidget(Button.builder(Component.literal("Загрузить награды из Twitch"), b -> {
+            addRenderableWidget(Button.builder(Component.literal("Загрузить список наград с канала"), b -> {
                 applyFields();
                 flash("Загружаю список наград…", 0xFFFFFF);
                 TwitchManager.get().loadRewards(
@@ -101,7 +103,7 @@ public class PtcConfigScreen extends Screen {
                             }
                         },
                         error -> flash("Ошибка: " + error, 0xFF5555));
-            }).bounds(cx - 110, 188, 220, 20).build());
+            }).bounds(cx - 110, 244, 220, 20).build());
         } else if (tab == 1) {
             lifetimeField = field(cx - 40, 44, 195, String.valueOf(cfg.lifetimeMinutes));
             maxCatsField = field(cx - 40, 74, 195, String.valueOf(cfg.maxCats));
@@ -113,12 +115,10 @@ public class PtcConfigScreen extends Screen {
                     v -> cfg.randomColorWhenUnspecified = v);
             toggle(212, "Имена зрителей над котами", () -> cfg.showNames, v -> cfg.showNames = v);
         } else {
-            authPortField = field(cx - 40, 44, 195, String.valueOf(cfg.authPort));
-
-            toggle(76, "Автопосадка рядом со стримером", () -> cfg.autoSit, v -> cfg.autoSit = v);
-            toggle(100, "Сообщения о призыве в чате", () -> cfg.announceSpawns, v -> cfg.announceSpawns = v);
-            toggle(124, "Звуки фантомных котов (только у вас)", () -> cfg.localSounds, v -> cfg.localSounds = v);
-            toggle(148, "HUD-строка состояния", () -> cfg.showHud, v -> cfg.showHud = v);
+            toggle(44, "Автопосадка рядом со стримером", () -> cfg.autoSit, v -> cfg.autoSit = v);
+            toggle(68, "Записывать призыв кота в лог (не в чат)", () -> cfg.announceSpawns, v -> cfg.announceSpawns = v);
+            toggle(92, "Звуки фантомных котов (только у вас)", () -> cfg.localSounds, v -> cfg.localSounds = v);
+            toggle(116, "HUD-строка состояния (сверху слева)", () -> cfg.showHud, v -> cfg.showHud = v);
         }
 
         addRenderableWidget(Button.builder(Component.literal("Готово"), b -> onClose())
@@ -153,13 +153,13 @@ public class PtcConfigScreen extends Screen {
     private void applyFields() {
         PtcConfig cfg = ConfigManager.get();
         if (clientIdField != null) cfg.clientId = clientIdField.getValue().trim();
-        if (clientSecretField != null) cfg.clientSecret = clientSecretField.getValue().trim();
+        if (accessTokenField != null) cfg.accessToken = accessTokenField.getValue().trim();
+        if (refreshTokenField != null) cfg.refreshToken = refreshTokenField.getValue().trim();
         if (rewardTitleField != null) cfg.rewardTitle = rewardTitleField.getValue().trim();
         if (rewardIdField != null) cfg.rewardId = rewardIdField.getValue().trim();
         if (lifetimeField != null) cfg.lifetimeMinutes = parseInt(lifetimeField.getValue(), cfg.lifetimeMinutes);
         if (maxCatsField != null) cfg.maxCats = parseInt(maxCatsField.getValue(), cfg.maxCats);
         if (maxDistanceField != null) cfg.maxDistance = parseDouble(maxDistanceField.getValue(), cfg.maxDistance);
-        if (authPortField != null) cfg.authPort = parseInt(authPortField.getValue(), cfg.authPort);
     }
 
     private static int parseInt(String s, int fallback) {
@@ -192,24 +192,24 @@ public class PtcConfigScreen extends Screen {
         if (tab == 0) {
             TwitchManager tm = TwitchManager.get();
             context.centeredText(this.font,
-                    Component.literal("Twitch: " + tm.status()), cx, 34,
+                    Component.literal("Статус: " + tm.status()), cx, 34,
                     tm.isConnected() ? 0x55FF55 : 0xFF5555);
-            drawLabel(context, "Client ID", 92);
-            drawLabel(context, "Client Secret", 116);
-            drawLabel(context, "Награда: название", 140);
-            drawLabel(context, "Награда: ID", 164);
+            drawLabel(context, "Client ID", 116);
+            drawLabel(context, "Access Token", 140);
+            drawLabel(context, "Refresh Token (необязательно)", 164);
+            drawLabel(context, "Награда: название", 194);
+            drawLabel(context, "Награда: ID", 218);
             context.centeredText(this.font,
-                    Component.literal("Redirect URL в Twitch-приложении: http://localhost:"
-                            + ConfigManager.get().authPort), cx, 216, 0xAAAAAA);
+                    Component.literal("1) Открыть сайт  2) Авторизоваться  3) Скопировать 3 значения сюда"),
+                    cx, 270, 0xAAAAAA);
             context.centeredText(this.font,
-                    Component.literal("ID надёжнее названия — переименование награды не сломает мод"),
-                    cx, 228, 0x888888);
+                    Component.literal("ID награды надёжнее названия — переименование награды не сломает мод"),
+                    cx, 282, 0x888888);
         } else if (tab == 1) {
             drawLabel(context, "Время жизни (мин)", 44);
             drawLabel(context, "Макс. котов", 74);
             drawLabel(context, "Дистанция (блоков)", 104);
         } else {
-            drawLabel(context, "Порт OAuth", 44);
             String path = FabricLoader.getInstance().getConfigDir()
                     .resolve("phantom-twitch-cats.json").toString();
             context.centeredText(this.font,

@@ -9,9 +9,13 @@ import java.util.Map;
 public class PtcConfig {
 
     // ---- Twitch ----
+    // Как получить: зайти на https://twitchtokengenerator.com, выбрать скоупы
+    // channel:read:redemptions и channel:manage:redemptions, авторизоваться —
+    // сайт покажет Client ID, Access Token и Refresh Token. Просто вставить
+    // их в настройки мода (кнопка "Twitch" -> три поля ниже).
     public String clientId = "";
-    public String clientSecret = "";
-    public int authPort = 16734;
+    public String accessToken = "";
+    public String refreshToken = "";
     public String rewardTitle = "Призови кота";
     public String rewardId = "";
     public boolean refundRedemptions = true;
@@ -95,10 +99,10 @@ public class PtcConfig {
         lifetimeMinutes = Math.max(1, Math.min(1440, lifetimeMinutes));
         maxCats = Math.max(1, Math.min(100, maxCats));
         maxDistance = Math.max(5.0, Math.min(256.0, maxDistance));
-        authPort = Math.max(1024, Math.min(65535, authPort));
 
         clientId = trim(clientId);
-        clientSecret = trim(clientSecret);
+        accessToken = trim(accessToken);
+        refreshToken = trim(refreshToken);
         rewardTitle = trim(rewardTitle);
         rewardId = trim(rewardId);
         if (defaultVariant == null || defaultVariant.isBlank()) {
