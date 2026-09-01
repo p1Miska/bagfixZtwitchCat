@@ -31,7 +31,7 @@ import java.util.List;
  */
 public final class WorldRenderHook {
 
-    private static boolean loggedOnce = false;
+    private static int lastLoggedCatCount = -1;
 
     /** Снимки котов, собранные на фазе извлечения — используются на фазе отрисовки. */
     private record Pending(net.minecraft.client.renderer.entity.state.EntityRenderState state,
@@ -64,10 +64,10 @@ public final class WorldRenderHook {
             EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
 
             List<PhantomCat> cats = CatManager.get().active();
-            if (!loggedOnce) {
+            if (cats.size() != lastLoggedCatCount) {
                 dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
-                        "[DEBUG] END_EXTRACTION сработал. Активных котов: {}, camPos={}", cats.size(), camPos);
-                loggedOnce = true;
+                        "[DEBUG] Активных котов: {}, camPos={}", cats.size(), camPos);
+                lastLoggedCatCount = cats.size();
             }
 
             for (PhantomCat cat : cats) {
@@ -96,11 +96,16 @@ public final class WorldRenderHook {
             PoseStack matrices = ctx.poseStack();
             SubmitNodeCollector collector = ctx.submitNodeCollector();
             if (matrices == null || collector == null) {
+                dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.warn(
+                        "[DEBUG] render-фаза: matrices или collector == null! matrices={}, collector={}",
+                        matrices, collector);
                 return;
             }
             EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
             var camera = ctx.levelState().cameraRenderState;
             for (Pending p : pending) {
+                dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.info(
+                        "[DEBUG] submit(): dx={}, dy={}, dz={}, state={}", p.dx(), p.dy(), p.dz(), p.state());
                 dispatcher.submit(p.state(), camera, p.dx(), p.dy(), p.dz(), matrices, collector);
             }
         });
