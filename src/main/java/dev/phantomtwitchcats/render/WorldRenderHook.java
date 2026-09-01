@@ -33,33 +33,29 @@ public final class WorldRenderHook {
 
     private static boolean loggedOnce = false;
 
+    /** Снимки котов, собранные на фазе извлечения — используются на фазе отрисовки. */
+    private record Pending(net.minecraft.client.renderer.entity.state.EntityRenderState state,
+                            double dx, double dy, double dz) {
+    }
+
+    private static final List<Pending> pending = new java.util.ArrayList<>();
+
     private WorldRenderHook() {
     }
 
     /**
-     * ВАЖНО: submit() в SubmitNodeCollector нужно вызывать в фазе ИЗВЛЕЧЕНИЯ
-     * (END_EXTRACTION), а не в фазе отрисовки (AFTER_TRANSLUCENT_TERRAIN).
-     * Предыдущая версия молча ничего не рисовала — без исключений, но и без
-     * эффекта — судя по всему, ровно из-за неправильной фазы: submitNodeCollector
-     * технически доступен и там, и там, но реально обрабатывается движком
-     * только то, что просабмичено во время экстракции.
+     * Двухфазная схема (подтверждено реальным примером Fabric API):
+     *  1) END_EXTRACTION (LevelExtractionContext — БЕЗ poseStack()/submitNodeCollector()):
+     *     тут только extractEntity() — читаем данные из мира, снимаем EntityRenderState.
+     *  2) AFTER_TRANSLUCENT_TERRAIN (LevelRenderContext — С poseStack()/submitNodeCollector()):
+     *     тут submit() — кладём снятые снимки в очередь на отрисовку.
      */
     public static void register() {
         LevelRenderEvents.END_EXTRACTION.register(ctx -> {
             Minecraft client = Minecraft.getInstance();
             ClientLevel world = client.level;
+            pending.clear();
             if (world == null) {
-                return;
-            }
-
-            PoseStack matrices = ctx.poseStack();
-            SubmitNodeCollector collector = ctx.submitNodeCollector();
-            if (matrices == null || collector == null) {
-                if (!loggedOnce) {
-                    dev.phantomtwitchcats.PhantomTwitchCatsClient.LOGGER.warn(
-                            "[DEBUG] matrices или collector == null! matrices={}, collector={}", matrices, collector);
-                    loggedOnce = true;
-                }
                 return;
             }
 
@@ -88,8 +84,24 @@ public final class WorldRenderHook {
                     continue;
                 }
 
-                EntityRenderState state = dispatcher.extractEntity(e, tickDelta);
-                dispatcher.submit(state, ctx.levelState().cameraRenderState, dx, dy, dz, matrices, collector);
+                var state = dispatcher.extractEntity(e, tickDelta);
+                pending.add(new Pending(state, dx, dy, dz));
+            }
+        });
+
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ctx -> {
+            if (pending.isEmpty()) {
+                return;
+            }
+            PoseStack matrices = ctx.poseStack();
+            SubmitNodeCollector collector = ctx.submitNodeCollector();
+            if (matrices == null || collector == null) {
+                return;
+            }
+            EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
+            var camera = ctx.levelState().cameraRenderState;
+            for (Pending p : pending) {
+                dispatcher.submit(p.state(), camera, p.dx(), p.dy(), p.dz(), matrices, collector);
             }
         });
     }
